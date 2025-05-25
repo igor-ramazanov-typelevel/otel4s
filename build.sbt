@@ -1,4 +1,34 @@
 import com.typesafe.tools.mima.core._
+import org.typelevel.sbt.gha.WorkflowStep.Run
+import org.typelevel.sbt.gha.WorkflowStep.Sbt
+
+ThisBuild / githubOwner := "igor-ramazanov-typelevel"
+ThisBuild / githubRepository := "skunk"
+
+ThisBuild / githubWorkflowPublishPreamble := List.empty
+ThisBuild / githubWorkflowUseSbtThinClient := true
+ThisBuild / githubWorkflowPublish := List(
+  Run(
+    commands = List("echo \"$PGP_SECRET\" | gpg --import"),
+    id = None,
+    name = Some("Import PGP key"),
+    env = Map("PGP_SECRET" -> "${{ secrets.PGP_SECRET }}"),
+    // params = Map(),
+    timeoutMinutes = None,
+    workingDirectory = None
+  ),
+  Sbt(
+    commands = List("+ publish"),
+    id = None,
+    name = Some("Publish"),
+    cond = None,
+    env = Map("GITHUB_TOKEN" -> "${{ secrets.GB_TOKEN }}"),
+    params = Map.empty,
+    timeoutMinutes = None,
+    preamble = true
+  )
+)
+ThisBuild / gpgWarnOnFailure := false
 
 ThisBuild / tlBaseVersion := "0.13"
 
@@ -78,15 +108,15 @@ ThisBuild / mergifyPrRules ++= Seq(
   )
 )
 
-val CatsVersion = "2.11.0"
-val CatsEffectVersion = "3.6.1"
-val CatsMtlVersion = "1.4.0"
-val FS2Version = "3.12.0"
-val MUnitVersion = "1.0.0"
-val MUnitScalaCheckVersion = "1.0.0-M11"
-val MUnitCatsEffectVersion = "2.1.0"
-val MUnitDisciplineVersion = "2.0.0-M3"
-val MUnitScalaCheckEffectVersion = "2.0.0-M2"
+val CatsVersion = "2.13.0"
+val CatsEffectVersion = "3.7-4972921"
+val CatsMtlVersion = "1.5.0"
+val FS2Version = "3.14.0-M1"
+val MUnitVersion = "1.1.1"
+val MUnitScalaCheckVersion = "1.1.0"
+val MUnitCatsEffectVersion = "2.2.0-M1"
+val MUnitDisciplineVersion = "2.0.0"
+val MUnitScalaCheckEffectVersion = "2.1.0-M1"
 val OpenTelemetryVersion = "1.49.0"
 val OpenTelemetryAlphaVersion = s"$OpenTelemetryVersion-alpha"
 val OpenTelemetryInstrumentationVersion = "2.16.0"
@@ -96,13 +126,13 @@ val OpenTelemetrySemConvAlphaVersion = s"$OpenTelemetrySemConvVersion-alpha"
 val OpenTelemetryProtoVersion = "1.7.0-alpha"
 val PekkoStreamVersion = "1.1.3"
 val PekkoHttpVersion = "1.2.0"
-val PlatformVersion = "1.0.2"
-val ScodecVersion = "1.1.38"
-val VaultVersion = "3.6.0"
-val Http4sVersion = "0.23.30"
-val CirceVersion = "0.14.8"
-val ScalaPBCirceVersion = "0.15.1"
-val CaseInsensitiveVersion = "1.4.2"
+val PlatformVersion = "1.1.0-M1"
+val ScodecVersion = "1.2.1"
+val VaultVersion = "3.7.0-M1"
+val Http4sVersion = "0.23.31-M1"
+val CirceVersion = "0.14.13"
+val ScalaPBCirceVersion = "0.16.0"
+val CaseInsensitiveVersion = "1.5.0"
 
 lazy val scalaReflectDependency = Def.settings(
   libraryDependencies ++= {
@@ -192,7 +222,10 @@ lazy val `core-common` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
       "org.typelevel" %%% "cats-effect-testkit" % CatsEffectVersion % Test,
       "org.typelevel" %%% "discipline-munit" % MUnitDisciplineVersion % Test,
       "lgbt.princess" %%% "platform" % PlatformVersion % Test
-    )
+    ),
+    publishTo := githubPublishTo.value,
+    publishConfiguration := publishConfiguration.value.withOverwrite(true),
+    publishLocalConfiguration := publishLocalConfiguration.value.withOverwrite(true),
   )
 
 lazy val `core-metrics` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
@@ -208,7 +241,10 @@ lazy val `core-metrics` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
       "org.typelevel" %%% "cats-effect-testkit" % CatsEffectVersion % Test,
       "org.typelevel" %%% "cats-laws" % CatsVersion % Test,
       "org.typelevel" %%% "discipline-munit" % MUnitDisciplineVersion % Test
-    )
+    ),
+    publishTo := githubPublishTo.value,
+    publishConfiguration := publishConfiguration.value.withOverwrite(true),
+    publishLocalConfiguration := publishLocalConfiguration.value.withOverwrite(true),
   )
 
 lazy val `core-trace` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
@@ -225,7 +261,10 @@ lazy val `core-trace` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
       "org.typelevel" %%% "cats-laws" % CatsVersion % Test,
       "org.typelevel" %%% "discipline-munit" % MUnitDisciplineVersion % Test,
       "org.typelevel" %%% "scalacheck-effect-munit" % MUnitScalaCheckEffectVersion % Test
-    )
+    ),
+    publishTo := githubPublishTo.value,
+    publishConfiguration := publishConfiguration.value.withOverwrite(true),
+    publishLocalConfiguration := publishLocalConfiguration.value.withOverwrite(true),
   )
 
 lazy val core = crossProject(JVMPlatform, JSPlatform, NativePlatform)
@@ -233,7 +272,10 @@ lazy val core = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .in(file("core/all"))
   .dependsOn(`core-common`, `core-metrics`, `core-trace`)
   .settings(
-    name := "otel4s-core"
+    name := "otel4s-core",
+    publishTo := githubPublishTo.value,
+    publishConfiguration := publishConfiguration.value.withOverwrite(true),
+    publishLocalConfiguration := publishLocalConfiguration.value.withOverwrite(true),
   )
 
 //
@@ -250,7 +292,10 @@ lazy val `instrumentation-metrics` = crossProject(JVMPlatform, JSPlatform, Nativ
     startYear := Some(2024),
     libraryDependencies ++= Seq(
       "org.typelevel" %%% "scalacheck-effect-munit" % MUnitScalaCheckEffectVersion % Test
-    )
+    ),
+    publishTo := githubPublishTo.value,
+    publishConfiguration := publishConfiguration.value.withOverwrite(true),
+    publishLocalConfiguration := publishLocalConfiguration.value.withOverwrite(true),
   )
 
 //
@@ -279,7 +324,10 @@ lazy val `sdk-common` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
     buildInfoOptions += sbtbuildinfo.BuildInfoOption.PackagePrivate,
     buildInfoKeys := Seq[BuildInfoKey](
       version
-    )
+    ),
+    publishTo := githubPublishTo.value,
+    publishConfiguration := publishConfiguration.value.withOverwrite(true),
+    publishLocalConfiguration := publishLocalConfiguration.value.withOverwrite(true),
   )
   .settings(munitDependencies)
   .jsSettings(scalaJSLinkerSettings)
@@ -301,7 +349,10 @@ lazy val `sdk-metrics` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
       "org.typelevel" %%% "cats-laws" % CatsVersion % Test,
       "org.typelevel" %%% "discipline-munit" % MUnitDisciplineVersion % Test,
       "org.typelevel" %%% "scalacheck-effect-munit" % MUnitScalaCheckEffectVersion % Test
-    )
+    ),
+    publishTo := githubPublishTo.value,
+    publishConfiguration := publishConfiguration.value.withOverwrite(true),
+    publishLocalConfiguration := publishLocalConfiguration.value.withOverwrite(true),
   )
   .settings(munitDependencies)
   .jsSettings(scalaJSLinkerSettings)
@@ -313,7 +364,10 @@ lazy val `sdk-metrics-testkit` =
     .dependsOn(`sdk-metrics`)
     .settings(
       name := "otel4s-sdk-metrics-testkit",
-      startYear := Some(2024)
+      startYear := Some(2024),
+      publishTo := githubPublishTo.value,
+      publishConfiguration := publishConfiguration.value.withOverwrite(true),
+      publishLocalConfiguration := publishLocalConfiguration.value.withOverwrite(true),
     )
 
 lazy val `sdk-trace` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
@@ -333,6 +387,9 @@ lazy val `sdk-trace` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
       "org.typelevel" %%% "discipline-munit" % MUnitDisciplineVersion % Test,
       "org.typelevel" %%% "scalacheck-effect-munit" % MUnitScalaCheckEffectVersion % Test
     ),
+    publishTo := githubPublishTo.value,
+    publishConfiguration := publishConfiguration.value.withOverwrite(true),
+    publishLocalConfiguration := publishLocalConfiguration.value.withOverwrite(true),
   )
   .settings(munitDependencies)
   .jsSettings(scalaJSLinkerSettings)
@@ -344,7 +401,10 @@ lazy val `sdk-trace-testkit` =
     .dependsOn(`sdk-trace`)
     .settings(
       name := "otel4s-sdk-trace-testkit",
-      startYear := Some(2024)
+      startYear := Some(2024),
+      publishTo := githubPublishTo.value,
+      publishConfiguration := publishConfiguration.value.withOverwrite(true),
+      publishLocalConfiguration := publishLocalConfiguration.value.withOverwrite(true),
     )
 
 lazy val `sdk-testkit` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
@@ -353,7 +413,10 @@ lazy val `sdk-testkit` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .dependsOn(core, `sdk-metrics-testkit`, `sdk-trace-testkit`)
   .settings(
     name := "otel4s-sdk-testkit",
-    startYear := Some(2024)
+    startYear := Some(2024),
+    publishTo := githubPublishTo.value,
+    publishConfiguration := publishConfiguration.value.withOverwrite(true),
+    publishLocalConfiguration := publishLocalConfiguration.value.withOverwrite(true),
   )
 
 lazy val sdk = crossProject(JVMPlatform, JSPlatform, NativePlatform)
@@ -368,7 +431,10 @@ lazy val sdk = crossProject(JVMPlatform, JSPlatform, NativePlatform)
     `sdk-trace-testkit` % Test
   )
   .settings(
-    name := "otel4s-sdk"
+    name := "otel4s-sdk",
+    publishTo := githubPublishTo.value,
+    publishConfiguration := publishConfiguration.value.withOverwrite(true),
+    publishLocalConfiguration := publishLocalConfiguration.value.withOverwrite(true),
   )
   .settings(munitDependencies)
   .jsSettings(scalaJSLinkerSettings)
@@ -387,6 +453,7 @@ lazy val `sdk-exporter-proto` =
       Compile / PB.targets ++= Seq(
         scalapb.gen(grpc = false) -> (Compile / sourceManaged).value / "scalapb"
       ),
+      Compile / PB.protocExecutable := file(sys.env("PROTOC")),
       Compile / PB.generate := {
         val files = (Compile / PB.generate).value
 
@@ -418,7 +485,10 @@ lazy val `sdk-exporter-proto` =
       libraryDependencies ++= Seq(
         "com.thesamet.scalapb" %% "scalapb-runtime" % scalapb.compiler.Version.scalapbVersion % "protobuf",
         "io.opentelemetry.proto" % "opentelemetry-proto" % OpenTelemetryProtoVersion % "protobuf-src" intransitive ()
-      )
+      ),
+      publishTo := githubPublishTo.value,
+      publishConfiguration := publishConfiguration.value.withOverwrite(true),
+      publishLocalConfiguration := publishLocalConfiguration.value.withOverwrite(true),
     )
     .jvmSettings(
       // scalafix settings to ensure there are no public classes in the module
@@ -461,7 +531,10 @@ lazy val `sdk-exporter-common` =
         "org.typelevel" %%% "cats-laws" % CatsVersion % Test,
         "org.typelevel" %%% "discipline-munit" % MUnitDisciplineVersion % Test,
         "io.circe" %%% "circe-generic" % CirceVersion % Test
-      )
+      ),
+      publishTo := githubPublishTo.value,
+      publishConfiguration := publishConfiguration.value.withOverwrite(true),
+      publishLocalConfiguration := publishLocalConfiguration.value.withOverwrite(true),
     )
     .jsSettings(scalaJSLinkerSettings)
     .nativeEnablePlugins(ScalaNativeBrewedConfigPlugin)
@@ -480,7 +553,10 @@ lazy val `sdk-exporter-metrics` =
     .settings(
       name := "otel4s-sdk-exporter-metrics",
       startYear := Some(2024),
-      dockerComposeEnvFile := crossProjectBaseDirectory.value / "docker" / "docker-compose.yml"
+      dockerComposeEnvFile := crossProjectBaseDirectory.value / "docker" / "docker-compose.yml",
+      publishTo := githubPublishTo.value,
+      publishConfiguration := publishConfiguration.value.withOverwrite(true),
+      publishLocalConfiguration := publishLocalConfiguration.value.withOverwrite(true),
     )
     .jsSettings(scalaJSLinkerSettings)
     .nativeEnablePlugins(ScalaNativeBrewedConfigPlugin)
@@ -512,7 +588,10 @@ lazy val `sdk-exporter-prometheus` =
         ProblemFilters.exclude[ReversedMissingMethodProblem](
           "org.typelevel.otel4s.sdk.exporter.prometheus.PrometheusMetricExporter#HttpServerBuilder.withShutdownTimeout"
         )
-      )
+      ),
+      publishTo := githubPublishTo.value,
+      publishConfiguration := publishConfiguration.value.withOverwrite(true),
+      publishLocalConfiguration := publishLocalConfiguration.value.withOverwrite(true),
     )
     .jsSettings(scalaJSLinkerSettings)
     .nativeEnablePlugins(ScalaNativeBrewedConfigPlugin)
@@ -535,7 +614,10 @@ lazy val `sdk-exporter-trace` =
       Test / scalacOptions ++= {
         // see https://github.com/circe/circe/issues/2162
         if (tlIsScala3.value) Seq("-Xmax-inlines", "64") else Nil
-      }
+      },
+      publishTo := githubPublishTo.value,
+      publishConfiguration := publishConfiguration.value.withOverwrite(true),
+      publishLocalConfiguration := publishLocalConfiguration.value.withOverwrite(true),
     )
     .jsSettings(scalaJSLinkerSettings)
     .nativeEnablePlugins(ScalaNativeBrewedConfigPlugin)
@@ -552,7 +634,10 @@ lazy val `sdk-exporter` = crossProject(JVMPlatform, JSPlatform, NativePlatform)
     `sdk-exporter-trace`
   )
   .settings(
-    name := "otel4s-sdk-exporter"
+    name := "otel4s-sdk-exporter",
+    publishTo := githubPublishTo.value,
+    publishConfiguration := publishConfiguration.value.withOverwrite(true),
+    publishLocalConfiguration := publishLocalConfiguration.value.withOverwrite(true),
   )
 
 //
@@ -573,7 +658,10 @@ lazy val `sdk-contrib-aws-resource` =
         "org.http4s" %%% "http4s-ember-client" % Http4sVersion,
         "org.http4s" %%% "http4s-circe" % Http4sVersion,
         "org.http4s" %%% "http4s-dsl" % Http4sVersion % Test
-      )
+      ),
+      publishTo := githubPublishTo.value,
+      publishConfiguration := publishConfiguration.value.withOverwrite(true),
+      publishLocalConfiguration := publishLocalConfiguration.value.withOverwrite(true),
     )
     .settings(munitDependencies)
     .jsSettings(scalaJSLinkerSettings)
@@ -590,7 +678,10 @@ lazy val `sdk-contrib-aws-xray-propagator` =
     )
     .settings(
       name := "otel4s-sdk-contrib-aws-xray-propagator",
-      startYear := Some(2024)
+      startYear := Some(2024),
+      publishTo := githubPublishTo.value,
+      publishConfiguration := publishConfiguration.value.withOverwrite(true),
+      publishLocalConfiguration := publishLocalConfiguration.value.withOverwrite(true),
     )
     .settings(munitDependencies)
     .jsSettings(scalaJSLinkerSettings)
@@ -603,6 +694,9 @@ lazy val `sdk-contrib-aws-xray` =
     .settings(
       name := "otel4s-sdk-contrib-aws-xray",
       startYear := Some(2024),
+      publishTo := githubPublishTo.value,
+      publishConfiguration := publishConfiguration.value.withOverwrite(true),
+      publishLocalConfiguration := publishLocalConfiguration.value.withOverwrite(true),
     )
     .settings(munitDependencies)
     .jsSettings(scalaJSLinkerSettings)
@@ -755,7 +849,10 @@ lazy val `semconv-stable` =
       buildInfoOptions += sbtbuildinfo.BuildInfoOption.PackagePrivate,
       buildInfoKeys := Seq[BuildInfoKey](
         "openTelemetrySemanticConventionsVersion" -> OpenTelemetrySemConvVersion
-      )
+      ),
+      publishTo := githubPublishTo.value,
+      publishConfiguration := publishConfiguration.value.withOverwrite(true),
+      publishLocalConfiguration := publishLocalConfiguration.value.withOverwrite(true),
     )
     .settings(munitDependencies)
 
@@ -770,7 +867,10 @@ lazy val `semconv-experimental` =
       startYear := Some(2023),
       // We use opentelemetry-semconv dependency to track releases of the OpenTelemetry semantic convention spec
       libraryDependencies += "io.opentelemetry.semconv" % "opentelemetry-semconv-incubating" % OpenTelemetrySemConvAlphaVersion % "compile-internal" intransitive (),
-      mimaPreviousArtifacts := Set.empty
+      mimaPreviousArtifacts := Set.empty,
+      publishTo := githubPublishTo.value,
+      publishConfiguration := publishConfiguration.value.withOverwrite(true),
+      publishLocalConfiguration := publishLocalConfiguration.value.withOverwrite(true),
     )
     .settings(munitDependencies)
 
@@ -783,6 +883,9 @@ lazy val `semconv-metrics-stable` =
       name := "otel4s-semconv-metrics",
       startYear := Some(2024),
       description := "Stable semantic metrics.",
+      publishTo := githubPublishTo.value,
+      publishConfiguration := publishConfiguration.value.withOverwrite(true),
+      publishLocalConfiguration := publishLocalConfiguration.value.withOverwrite(true),
     )
     .settings(munitDependencies)
 
@@ -795,7 +898,10 @@ lazy val `semconv-metrics-experimental` =
       name := "otel4s-semconv-metrics-experimental",
       startYear := Some(2024),
       description := "Experimental (incubating) semantic metrics. Breaking changes expected. Library instrumentation SHOULD NOT depend on this.",
-      mimaPreviousArtifacts := Set.empty
+      mimaPreviousArtifacts := Set.empty,
+      publishTo := githubPublishTo.value,
+      publishConfiguration := publishConfiguration.value.withOverwrite(true),
+      publishLocalConfiguration := publishLocalConfiguration.value.withOverwrite(true),
     )
     .settings(munitDependencies)
 
